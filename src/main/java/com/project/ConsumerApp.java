@@ -1,41 +1,36 @@
 package com.project;
 
-import com.rabbitmq.client.*;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.common.serialization.StringDeserializer;
+
+import java.time.Duration;
+import java.util.List;
+import java.util.Properties;
 
 /**
  * @author fajaryudi
- * @created 2024/06/07 - 13.12
+ * @created 2024/06/05 - 15.20
  */
 public class ConsumerApp {
     public static void main(String[] args) {
-        try {
-            System.out.println("Simple ConsumerApp RabbitListener");
-            ConnectionFactory factory = new ConnectionFactory();
-            factory.setUri("amqp://guest:guest@localhost:5672/");
-            factory.setVirtualHost("/");
+        Properties properties = new Properties();
+        properties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,"PLAINTEXT://localhost:9092");
+        properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,"earliest");
+        properties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+        properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+        properties.put(ConsumerConfig.GROUP_ID_CONFIG, "java");
 
-            Connection connection = factory.newConnection();
-            Channel channel = connection.createChannel();
+        KafkaConsumer<String, String> consumer = new KafkaConsumer<>(properties);
+        consumer.subscribe(List.of("test1"));
 
-            DeliverCallback deliverCallback = (consumerTag, message) -> {
-                System.out.print("ConsumerApp : ");
-                System.out.print(message.getEnvelope().getRoutingKey() +" ");
-                System.out.println(new String(message.getBody()));
-            };
-
-            CancelCallback cancelCallback =  consumerTag -> {
-                System.out.println("Consumer is canceled");
-            };
-
-//            channel.basicConsume("all_notif", deliverCallback, cancelCallback);
-            channel.basicConsume("all_notif", true, deliverCallback, cancelCallback);
-
-//            channel.close();
-//            connection.close();
-
-        } catch (Exception e){
-            e.printStackTrace();
+        while (true){
+            ConsumerRecords<String, String> consumerRecords = consumer.poll(Duration.ofSeconds(1));
+            for (ConsumerRecord<String, String> message : consumerRecords){
+                System.out.println("Received Message: "+message.value());
+            }
         }
-
     }
 }
